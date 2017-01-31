@@ -27,5 +27,103 @@ function heap_add_snippet_to_head() {
 		heap.load("<?php echo esc_attr( HEAP_APP_ID ); ?>");
 	</script>
 	<?php
+
+	if ( is_user_logged_in() ) {
+		add_action( 'wp_footer', 'heap_identify_js_snippet', 9999 );
+	}
 }
 add_action( 'wp_head', 'heap_add_snippet_to_head', 9999 );
+
+/**
+ * Adds the Heap analytics logged-in snippet to the site's footer.
+ *
+ * @since  0.1.0
+ *
+ * @return void
+ */
+function heap_identify_js_snippet() {
+	?>
+	<script id="heap-analytics-identify" type="text/javascript">
+		var url = '<?php echo esc_url( site_url( '?heap_get_user_id=' . hash_hmac( 'sha256', HEAP_APP_ID, 'Heap_WordPress_Integration' ) ) ); ?>';
+		var xhr = new XMLHttpRequest();
+		xhr.open( 'POST', url, true );
+		xhr.onload = function() {
+			if ( 4 === xhr.readyState && 200 === xhr.status && xhr.responseText ) {
+				console.warn('xhr.responseText', xhr.responseText);
+				heap.identify( xhr.responseText );
+			}
+		};
+		xhr.send(null);
+	</script>
+	<?php
+}
+
+/**
+ * Listen for requests for the User ID from the Heap JS logged-in snippet.
+ *
+ * @since  0.1.0
+ *
+ * @return void
+ */
+function heap_check_for_user_id_request() {
+	if ( defined( 'HEAP_APP_ID' ) && isset( $_POST['heap_get_user_id'] ) && $_POST['heap_get_user_id'] === hash_hmac( 'sha256', HEAP_APP_ID, 'Heap_WordPress_Integration' ) ) {
+		$user_id = get_current_user_id();
+		wp_send_json( $user_id, $user_id ? 200 : 400 );
+	}
+}
+add_action( 'init', 'heap_check_for_user_id_request' );
+
+/**
+ * Tracks a login event and identifies the user and user properties with Heap.
+ *
+ * @since  0.1.0
+ *
+ * @param  string  $username The logged-in user's username.
+ * @param  WP_User $user     User object
+ *
+ * @return void
+ */
+function heap_track_login_and_user( $username, $user ) {
+	if ( ! ( $user instanceof WP_User ) || ! defined( 'HEAP_APP_ID' ) ) {
+		return;
+	}
+
+	$base_args = array(
+		'headers' => array(
+			'Content-Type' => 'application/json',
+		),
+	);
+
+	$body_args = array(
+		'app_id'     => HEAP_APP_ID,
+		'identity'   => $user->ID,
+		'properties' => array(
+			'user_name'  => $username,
+			'user_id'    => $user->ID,
+		),
+	);
+
+
+	// Track the user/login: https://heapanalytics.com/docs/server-side#track
+	$body          = $body_args;
+	$body['event'] = 'WordPress Login';
+	$args          = $base_args;
+	$args['body']  = wp_json_encode( $body );
+
+	wp_remote_post( 'https://heapanalytics.com/api/track', $args );
+
+	// Define User Properties: https://heapanalytics.com/docs/server-side#add-user-properties
+	$body = $body_args;
+	$body['properties']['email']        = $current_user->user_email;
+	$body['properties']['first_name']   = isset( $current_user->first_name ) ? $current_user->first_name : '';
+	$body['properties']['last_name']    = isset( $current_user->last_name ) ? $current_user->last_name : '';
+	$body['properties']['display_name'] = isset( $current_user->display_name ) ? $current_user->display_name : '';
+	$body['properties']['roles']        = isset( $user->roles ) ? implode( ', ', $user->roles ) : '';
+
+	$args         = $base_args;
+	$args['body'] = wp_json_encode( $body );
+
+	wp_remote_post( 'https://heapanalytics.com/api/add_user_properties', $args );
+
+}
+add_action( 'wp_login', 'heap_track_login_and_user', 10, 2 );
