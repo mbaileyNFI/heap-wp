@@ -44,16 +44,15 @@ add_action( 'wp_head', 'heap_add_snippet_to_head', 9999 );
 function heap_identify_js_snippet() {
 	?>
 	<script id="heap-analytics-identify" type="text/javascript">
-		var url = '<?php echo esc_url( site_url( '?heap_get_user_id=' . hash_hmac( 'sha256', HEAP_APP_ID, 'Heap_WordPress_Integration' ) ) ); ?>';
 		var xhr = new XMLHttpRequest();
-		xhr.open( 'POST', url, true );
+		xhr.open( 'POST', '<?php echo esc_url( site_url() ); ?>', true );
+		xhr.setRequestHeader( 'Content-type', 'application/x-www-form-urlencoded' );
 		xhr.onload = function() {
 			if ( 4 === xhr.readyState && 200 === xhr.status && xhr.responseText ) {
-				console.warn('xhr.responseText', xhr.responseText);
 				heap.identify( xhr.responseText );
 			}
 		};
-		xhr.send(null);
+		xhr.send( 'heap_get_user_id=<?php echo hash_hmac( 'sha256', HEAP_APP_ID, 'Heap_WordPress_Integration' ); ?>' );
 	</script>
 	<?php
 }
