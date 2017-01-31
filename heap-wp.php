@@ -113,10 +113,10 @@ function heap_track_login_and_user( $username, $user ) {
 
 	// Define User Properties: https://heapanalytics.com/docs/server-side#add-user-properties
 	$body = $body_args;
-	$body['properties']['email']        = $current_user->user_email;
-	$body['properties']['first_name']   = isset( $current_user->first_name ) ? $current_user->first_name : '';
-	$body['properties']['last_name']    = isset( $current_user->last_name ) ? $current_user->last_name : '';
-	$body['properties']['display_name'] = isset( $current_user->display_name ) ? $current_user->display_name : '';
+	$body['properties']['email']        = $user->user_email;
+	$body['properties']['first_name']   = isset( $user->first_name ) ? $user->first_name : '';
+	$body['properties']['last_name']    = isset( $user->last_name ) ? $user->last_name : '';
+	$body['properties']['display_name'] = isset( $user->display_name ) ? $user->display_name : '';
 	$body['properties']['roles']        = isset( $user->roles ) ? implode( ', ', $user->roles ) : '';
 
 	$args         = $base_args;
