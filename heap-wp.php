@@ -3,16 +3,16 @@
  * Plugin Name: Heap WordPress Integration
  * Plugin URI:  https://heapanalytics.com
  * Description: This plugin adds the Heap snippet to your WordPress site.
- * Version:     0.1.0
- * Author:      Zao
- * Author URI:  http://zao.is
+ * Version:     1.0
+ * Author:      M Bailey
+ * Author URI:  https://nficorporate.com
  * License:     GPL
  */
 
 /**
  * Adds the Heap analytics snippet to the site's <head>
  *
- * @since  0.1.0
+ * @since  1.0
  *
  * @return void
  */
@@ -22,9 +22,9 @@ function heap_add_snippet_to_head() {
 		return;
 	}
 	?>
-	<script id="heap-analytics" type="text/javascript">
-		window.heap=window.heap||[],heap.load=function(e,t){window.heap.appid=e,window.heap.config=t=t||{};var r=t.forceSSL||"https:"===document.location.protocol,a=document.createElement("script");a.type="text/javascript",a.async=!0,a.src=(r?"https:":"http:")+"//cdn.heapanalytics.com/js/heap-"+e+".js";var n=document.getElementsByTagName("script")[0];n.parentNode.insertBefore(a,n);for(var o=function(e){return function(){heap.push([e].concat(Array.prototype.slice.call(arguments,0)))}},p=["addEventProperties","addUserProperties","clearEventProperties","identify","removeEventProperty","setEventProperties","track","unsetEventProperty"],c=0;c<p.length;c++)heap[p[c]]=o(p[c])};
-		heap.load("<?php echo esc_attr( HEAP_APP_ID ); ?>");
+	<script type="text/javascript">
+	  window.heap=window.heap||[],heap.load=function(e,t){window.heap.appid=e,window.heap.config=t=t||{};var r=document.createElement("script");r.type="text/javascript",r.async=!0,r.src="https://cdn.heapanalytics.com/js/heap-"+e+".js";var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(r,a);for(var n=function(e){return function(){heap.push([e].concat(Array.prototype.slice.call(arguments,0)))}},p=["addEventProperties","addUserProperties","clearEventProperties","identify","resetIdentity","removeEventProperty","setEventProperties","track","unsetEventProperty"],o=0;o<p.length;o++)heap[p[o]]=n(p[o])};
+	  heap.load("<?php echo esc_attr( HEAP_APP_ID ); ?>");
 	</script>
 	<?php
 
@@ -42,35 +42,13 @@ add_action( 'wp_head', 'heap_add_snippet_to_head', 9999 );
  * @return void
  */
 function heap_identify_js_snippet() {
+	$userid = wp_get_current_user();
 	?>
 	<script id="heap-analytics-identify" type="text/javascript">
-		var xhr = new XMLHttpRequest();
-		xhr.open( 'POST', '<?php echo esc_url( site_url() ); ?>', true );
-		xhr.setRequestHeader( 'Content-type', 'application/x-www-form-urlencoded' );
-		xhr.onload = function() {
-			if ( 4 === xhr.readyState && 200 === xhr.status && xhr.responseText ) {
-				heap.identify( xhr.responseText );
-			}
-		};
-		xhr.send( 'heap_get_user_id=<?php echo hash_hmac( 'sha256', HEAP_APP_ID, 'Heap_WordPress_Integration' ); ?>' );
+		heap.identify("<?php echo esc_attr( $userid ); ?>");
 	</script>
 	<?php
 }
-
-/**
- * Listen for requests for the User ID from the Heap JS logged-in snippet.
- *
- * @since  0.1.0
- *
- * @return void
- */
-function heap_check_for_user_id_request() {
-	if ( defined( 'HEAP_APP_ID' ) && isset( $_POST['heap_get_user_id'] ) && $_POST['heap_get_user_id'] === hash_hmac( 'sha256', HEAP_APP_ID, 'Heap_WordPress_Integration' ) ) {
-		$user_id = get_current_user_id();
-		wp_send_json( $user_id, $user_id ? 200 : 400 );
-	}
-}
-add_action( 'init', 'heap_check_for_user_id_request' );
 
 /**
  * Tracks a login event and identifies the user and user properties with Heap.
